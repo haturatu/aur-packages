@@ -1,0 +1,106 @@
+name: AUR maintenance
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate and compare with AUR without publishing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aur-${{ github.event.pull_request.number || 'master' }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests -v
+      - name: Check shell scripts
+        run: shellcheck scripts/*.sh
+
+  validate:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Update releases and build latest sources in Arch Linux
+        run: docker run --rm -v "$PWD:/repo" archlinux:base-devel bash /repo/scripts/ci-validate.sh
+      - name: Upload validated recipes and receipt
+        run: tar -czf validated-recipes.tar.gz packages .cache/validated.json
+      - name: Store validated archive
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: validated-recipes
+          if-no-files-found: error
+          retention-days: 7
+          path: validated-recipes.tar.gz
+
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    environment: aur-production
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: Check that the validated commit is still master
+        run: |
+          git fetch origin master
+          test "$(git rev-parse origin/master)" = "$GITHUB_SHA"
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: validated-recipes
+          path: .cache/artifacts
+      - name: Restore validated recipes and receipt
+        run: tar -xzf .cache/artifacts/validated-recipes.tar.gz
+      - name: Compare recipes with AUR
+        run: python3 aurctl publish --all --dry-run
+      - name: Configure AUR SSH
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          test -n "$AUR_SSH_PRIVATE_KEY"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur_deploy
+          chmod 600 ~/.ssh/aur_deploy
+          cp .github/aur_known_hosts ~/.ssh/aur_known_hosts
+      - name: Publish validated recipes
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        env:
+          GIT_SSH_COMMAND: ssh -i /home/runner/.ssh/aur_deploy -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/runner/.ssh/aur_known_hosts
+        run: python3 aurctl publish --all
+      - name: Save recipe updates and AUR synchronization state
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add packages .aur
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: synchronize validated AUR packages'
+            git push origin HEAD:master
+          fi
+      - name: Remove publishing key
+        if: always()
+        run: rm -f ~/.ssh/aur_deploy

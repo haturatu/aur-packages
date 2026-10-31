@@ -220,7 +220,7 @@ def latest(name):
     with tempfile.TemporaryDirectory(prefix="aur-version-") as temp:
         path = Path(temp) / "nvchecker.toml"
         # Config values are TOML scalars or scalar lists; JSON encoding is TOML-compatible here.
-        path.write_text(f'[{json.dumps(name)}]\n' + "\n".join(f"{k} = {json.dumps(v)}" for k, v in source.items()) + "\n")
+        path.write_text(f'[{json.dumps(name)}]\n' + "\n".join(f"{json.dumps(k)} = {json.dumps(v)}" for k, v in source.items()) + "\n")
         output = run("nvchecker", "--logger=json", "-c", str(path), capture=True)
         events = [json.loads(line) for line in output.splitlines() if line.strip()]
         versions = [e["version"] for e in events if e.get("name") == name and e.get("event") in {"updated", "up-to-date"} and e.get("version")]
@@ -313,16 +313,46 @@ def validate(name, build=False):
     log(f"{name}: validation passed (full_build={build})")
 
 
+def require_receipt(name):
+    receipt_path = ROOT / ".cache" / "validated.json"
+    receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
+    if receipt.get(name) != fingerprint(name):
+        raise Error(f"{name}: full-build validation receipt missing or stale")
+
+
+def register(name, dry_run=False):
+    """Explicit first publication; normal scheduled publishing never creates packages."""
+    if not config(name)["package"].get("publish", False):
+        raise Error(f"{name}: review the recipe and set package.publish = true first")
+    require_receipt(name)
+    state_path = ROOT / ".aur" / f"{name}.json"
+    if state_path.exists():
+        raise Error(f"{name}: already imported; use publish")
+    with tempfile.TemporaryDirectory(prefix="aur-register-") as temp:
+        repo = Path(temp) / name
+        run("git", "clone", "--quiet", remote_url(name, write=True), str(repo))
+        existing = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=repo, capture_output=True)
+        if existing.returncode == 0:
+            raise Error(f"{name}: already exists on AUR; use add to import and reconcile it")
+        if dry_run:
+            log(f"{name}: would create AUR master from the validated recipe")
+            return
+        run("git", "checkout", "--orphan", "master", cwd=repo)
+        copy_recipe(package_path(name), repo)
+        run("git", "add", "--all", cwd=repo)
+        run("git", "-c", "user.name=haturatu", "-c", "user.email=taro@eyes4you.org", "commit", "-m", f"feat: add {name}", cwd=repo)
+        run("git", "push", "origin", "HEAD:master", cwd=repo)
+        write_json(state_path, {"commit": run("git", "rev-parse", "HEAD", cwd=repo, capture=True), "files": snapshot(package_path(name))})
+    log(f"{name}: registered on AUR; scheduled publishing is now available")
+
+
 def publish(name, dry_run=False):
     if not config(name)["package"].get("publish", False):
         log(f"{name}: publishing disabled")
         return
     desired = snapshot(package_path(name))
     if not dry_run:
-        receipt_path = ROOT / ".cache" / "validated.json"
-        receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
-        if receipt.get(name) != fingerprint(name):
-            raise Error(f"{name}: full-build validation receipt missing or stale")
+        require_receipt(name)
     with tempfile.TemporaryDirectory(prefix="aur-publish-") as temp:
         repo = Path(temp) / name
         clone(name, repo, write=not dry_run)
@@ -371,6 +401,9 @@ def main():
     sub.add_argument("name")
     sub.add_argument("--template", choices=("vcs", "github-release"))
     sub.add_argument("--upstream")
+    sub = commands.add_parser("register")
+    sub.add_argument("name")
+    sub.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     try:
         if args.command == "import":
@@ -385,6 +418,10 @@ def main():
                 add_template(args.name, args.template, args.upstream)
             else:
                 import_package(args.name)
+            return
+        if args.command == "register":
+            names([args.name])
+            register(args.name, args.dry_run)
             return
         selected = names(args.packages)
         if args.command == "list":
