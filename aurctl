@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Manage AUR recipes; package execution belongs exclusively to validation."""
+from aurctl_lib import main
+
+if __name__ == "__main__":
+    main()

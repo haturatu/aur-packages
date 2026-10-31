@@ -1,0 +1,3 @@
+[package]
+kind = "vcs"
+publish = true

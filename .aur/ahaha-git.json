@@ -1,0 +1,17 @@
+{
+  "commit": "923c53c715ab6e500c23fff184b5b6e07e96dbf4",
+  "files": {
+    ".SRCINFO": {
+      "executable": false,
+      "sha256": "4bcaaeac47b1da847ebd36d3466c234da422ecc0a66dbcd2296349d6772d9fe5"
+    },
+    ".gitignore": {
+      "executable": false,
+      "sha256": "ce9263682b756bdf3ea83ad0b67f7250ed978ca46da3e9f51e30886bbae4b6f6"
+    },
+    "PKGBUILD": {
+      "executable": false,
+      "sha256": "bbf6bc1a7ee35ec2981aa40cbc759f08e5f7247b08b24c6a9c5030f14bed9e13"
+    }
+  }
+}
