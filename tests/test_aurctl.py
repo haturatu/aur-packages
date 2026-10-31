@@ -91,6 +91,26 @@ class RepositoryTests(unittest.TestCase):
         ctl.publish(self.name)
         self.assertEqual(self.remote_commit(), current, "No-op publishing must not create commits")
 
+    def test_publish_tracks_explicit_recipe_files_even_when_gitignored(self):
+        recipe = ctl.package_path(self.name)
+        (recipe / ".gitignore").write_text("*.patch\n")
+        (recipe / "new.patch").write_text("needed source patch\n")
+        self.receipt()
+        ctl.publish(self.name)
+        self.assertEqual(git("--git-dir", str(self.remotes / f"{self.name}.git"), "show", "master:new.patch"), "needed source patch")
+
+    def test_publish_handles_directory_to_file_changes(self):
+        recipe = ctl.package_path(self.name)
+        (recipe / "nested").mkdir()
+        (recipe / "nested" / "source.patch").write_text("patch\n")
+        self.receipt()
+        ctl.publish(self.name)
+        shutil.rmtree(recipe / "nested")
+        (recipe / "nested").write_text("now a regular file\n")
+        self.receipt()
+        ctl.publish(self.name)
+        self.assertEqual(git("--git-dir", str(self.remotes / f"{self.name}.git"), "show", "master:nested"), "now a regular file")
+
     def test_co_maintainer_changes_are_never_overwritten(self):
         (self.seed / "old.patch").write_text("co-maintainer change\n")
         git("add", ".", cwd=self.seed)
