@@ -339,7 +339,7 @@ def register(name, dry_run=False):
             return
         run("git", "checkout", "--orphan", "master", cwd=repo)
         copy_recipe(package_path(name), repo)
-        run("git", "add", "--all", cwd=repo)
+        run("git", "add", "--all", "--force", cwd=repo)
         run("git", "-c", "user.name=haturatu", "-c", "user.email=taro@eyes4you.org", "commit", "-m", f"feat: add {name}", cwd=repo)
         run("git", "push", "origin", "HEAD:master", cwd=repo)
         write_json(state_path, {"commit": run("git", "rev-parse", "HEAD", cwd=repo, capture=True), "files": snapshot(package_path(name))})
@@ -370,10 +370,13 @@ def publish(name, dry_run=False):
             if dry_run:
                 return
             for rel in actual:
-                if rel not in desired:
-                    (repo / rel).unlink()
+                (repo / rel).unlink()
+            # Remove empty recipe directories so directory-to-file changes work.
+            for directory in sorted(repo.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+                if ".git" not in directory.relative_to(repo).parts and directory.is_dir():
+                    directory.rmdir()
             copy_recipe(package_path(name), repo)
-            run("git", "add", "--all", cwd=repo)
+            run("git", "add", "--all", "--force", cwd=repo)
             run("git", "-c", "user.name=haturatu", "-c", "user.email=taro@eyes4you.org", "commit", "-m", f"chore: update {name}", cwd=repo)
             # A normal fast-forward push rejects races with other maintainers.
             run("git", "push", "origin", "HEAD:master", cwd=repo)

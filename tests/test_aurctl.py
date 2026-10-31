@@ -2,6 +2,7 @@ import contextlib
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -180,6 +181,32 @@ class RepositoryTests(unittest.TestCase):
         with patch.object(ctl, "latest", return_value="0.1"), patch.object(ctl, "run", return_value="-1"):
             with self.assertRaisesRegex(ctl.Error, "downgrade"):
                 ctl.update(self.name)
+
+    def test_initial_registration_requires_empty_aur_and_preserves_files(self):
+        new_name = "new-example-git"
+        destination = ctl.package_path(new_name)
+        shutil.copytree(ctl.package_path(self.name), destination)
+        for filename in ("PKGBUILD", ".SRCINFO"):
+            path = destination / filename
+            path.write_text(path.read_text().replace(self.name, new_name))
+        ctl.write_config(new_name, "vcs", publish=True)
+        git("init", "--bare", "--initial-branch=master", str(self.remotes / f"{new_name}.git"))
+        ctl.write_json(self.root / ".cache" / "validated.json", {new_name: ctl.fingerprint(new_name)})
+        ctl.register(new_name, dry_run=True)
+        self.assertFalse((self.root / ".aur" / f"{new_name}.json").exists())
+        ctl.register(new_name)
+        state = json.loads((self.root / ".aur" / f"{new_name}.json").read_text())
+        self.assertEqual(state["files"], ctl.snapshot(destination))
+        with self.assertRaisesRegex(ctl.Error, "already imported"):
+            ctl.register(new_name)
+
+    def test_registration_refuses_existing_aur_repository(self):
+        (self.root / ".aur" / f"{self.name}.json").unlink()
+        self.receipt()
+        before = self.remote_commit()
+        with self.assertRaisesRegex(ctl.Error, "already exists"):
+            ctl.register(self.name)
+        self.assertEqual(before, self.remote_commit())
 
 
 class OutputTests(unittest.TestCase):

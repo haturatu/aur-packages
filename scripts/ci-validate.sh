@@ -3,6 +3,9 @@ set -euo pipefail
 
 # Run only in a disposable Arch container. No publishing credentials enter it.
 cd /repo
+repo_uid=$(stat -c %u .)
+repo_gid=$(stat -c %g .)
+trap 'chown -R "$repo_uid:$repo_gid" /repo' EXIT
 pacman -Syu --noconfirm --needed python git nvchecker pacman-contrib namcap
 dependency_lines=$(python aurctl deps --all)
 if [[ -n "$dependency_lines" ]]; then
