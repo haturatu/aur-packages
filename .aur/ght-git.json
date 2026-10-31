@@ -1,13 +1,13 @@
 {
-  "commit": "ec7d1e2ba1b1f5196b921a0752a0f24928db7d4b",
+  "commit": "4583fbb295fad7492f4bdf8d2c8eed3beef1e448",
   "files": {
     ".SRCINFO": {
       "executable": false,
-      "sha256": "1017395c4ff27a3268f8eb179510ccb2648720072063f627558bf508706e3de8"
+      "sha256": "972fc9b29eafb9ec795a0fa677a0101b9236afab8528e9fa6e0427154d36d40f"
     },
     "PKGBUILD": {
       "executable": false,
-      "sha256": "626c566f570e9a44662ecd5291efdfbf80e0a5e9e2e827058aa0f718d0d44481"
+      "sha256": "12cae3383f3948558430a4ae124dfe42c55a952d5c9fd11022dfc4a4411b1786"
     }
   }
 }

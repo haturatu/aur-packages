@@ -1,9 +1,9 @@
 {
-  "commit": "923c53c715ab6e500c23fff184b5b6e07e96dbf4",
+  "commit": "0a42c1c06227c5dd6f778fbfff585d7773c8fb11",
   "files": {
     ".SRCINFO": {
       "executable": false,
-      "sha256": "4bcaaeac47b1da847ebd36d3466c234da422ecc0a66dbcd2296349d6772d9fe5"
+      "sha256": "3900dc048d09a215224f9196248d43d26d7ea85a64f9ac91f66676ec3c215166"
     },
     ".gitignore": {
       "executable": false,
@@ -11,7 +11,7 @@
     },
     "PKGBUILD": {
       "executable": false,
-      "sha256": "bbf6bc1a7ee35ec2981aa40cbc759f08e5f7247b08b24c6a9c5030f14bed9e13"
+      "sha256": "8a42522cbeb4d178afb3bff4b5eb126d7cd4c3d37aa1813cd6a47215555f57d3"
     }
   }
 }
