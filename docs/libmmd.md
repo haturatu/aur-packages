@@ -1,41 +1,56 @@
 # libmmd の配布と更新
 
-`libmmd` は GitHub Release のソースを使う通常の AUR パッケージです。`-git` パッケージではありません。
+`libmmd` は GitHub Release のソースを使う通常の AUR パッケージです。`libmmd-git` ではなく `libmmd` という名前で配布しています。
 
-## インストール
+`-git` だと利用者がその時点の最新コミットを取得してビルドするため、再現性のあるライブラリの配布には少し向きません。なので、こちらは**リリース版を追跡して、利用側のアプリがビルドできることも確認してから公開する**構成にしました。
+
+## インストールする
 
 ```sh
 yay -S libmmd
 ```
 
-libmmd のヘッダーと CMake パッケージを含めて `/usr` 以下にインストールします。物理機能とシステムの Bullet を有効にし、ソースの自動取得は無効にします。
+ヘッダーと CMake パッケージを含めて `/usr` 以下へインストールします。物理機能とシステムの Bullet を有効にし、ビルド時のソース自動取得は無効化しています。
 
-mikumikudesu、pmxer、vmd-trace のソースで次を実行すると、インストール済みの libmmd を必須にできます。
+mikumikudesu、pmxer、vmd-trace 側では、次のようにシステムへインストールした libmmd を指定できます。
 
 ```sh
-cmake -S . -B build/system -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBMMD_PROVIDER=SYSTEM
+cmake -S . -B build/system -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DLIBMMD_PROVIDER=SYSTEM
 cmake --build build/system --parallel
 ```
 
-アプリケーション固有のビルド依存関係やアセットも準備してください。`AUTO` は互換性のあるシステム版を優先し、`BUNDLED` は各アプリケーションに固定されたソースを使います。vmd-trace の `VMDTRACE_WITH_MODEL=OFF` では libmmd を使用しません。
+各アプリ固有の依存関係やアセットは別途必要です。`LIBMMD_PROVIDER=AUTO` は互換性のあるシステム版を優先し、`BUNDLED` はアプリごとに固定されたソースを使います。`vmd-trace` を `VMDTRACE_WITH_MODEL=OFF` でビルドする場合は libmmd を使用しません。
 
-## リリース手順
+## リリースから AUR へ反映するまで
 
-1. libmmd の `CMakeLists.txt` と `include/mmd/version.hpp` のバージョンを更新します。
-2. libmmd のテストと Package ワークフローを通します。
-3. 変更を既定ブランチへ取り込み、対応する `vX.Y.Z` タグを push します。
-4. Release ワークフローが検証後に `libmmd-X.Y.Z.tar.gz` を GitHub Release へ公開します。
-5. このリポジトリの6時間ごとのワークフローが Release を検出し、`pkgver`、チェックサム、`.SRCINFO` を更新します。
-6. クリーンな Arch Linux コンテナーでビルドとテストを実行します。生成したパッケージを `pacman -U` でインストールし、3アプリケーションの `main` を `SYSTEM` でビルドします。
-7. 全検証に成功した場合のみ AUR へ push し、更新レシピと同期状態をこのリポジトリへ保存します。
+バージョンを更新しただけで公開すると、依存先の ABI を壊した変更に気付かない場合があります。そのため、`libmmd` の単体テストに加えて、主要な利用側アプリでもビルドを確認します。
 
-検証では mikumikudesu の実行ファイルとコア・CLI テスト、pmxer の CLI 構成、vmd-trace のモデル対応 CLI 構成をビルドします。PMX/VMD、アニメーション、ライブラリ単体の物理テストと、実行ファイルの動的リンクを確認します。GUI 描画、動画キャプチャ、MNN、MediaPipe の動作検証は含みません。検証ログには利用したアプリケーションのコミットを出力します。
+流れは次のとおりです。
 
-vmd-trace は非公開リポジトリです。リポジトリシークレット `CONSUMERS_TOKEN` に読み取り専用トークンを設定すると、ランナー上で取得したソースを読み取り専用でコンテナへ渡し、全3アプリケーションを検証します。未設定の場合、その検証は警告を出して省略し、公開リポジトリの2アプリケーションだけで合否を判定します。
+1. `libmmd` の `CMakeLists.txt` と `include/mmd/version.hpp` のバージョンを更新する。
+2. `libmmd` のテストと Package Workflow を通す。
+3. 既定ブランチに取り込み、対応する `vX.Y.Z` タグを push する。
+4. Release Workflow が検証後に `libmmd-X.Y.Z.tar.gz` を GitHub Release へ公開する。
+5. このリポジトリの6時間ごとの Workflow が Release を検知し、`pkgver`、チェックサム、`.SRCINFO` を更新する。
+6. 使い捨て Arch Linux コンテナでパッケージをビルド・テストし、`pacman -U` でインストールして利用側アプリを `SYSTEM` でビルドする。
+7. すべての必須検証に成功した場合だけ、AUR に通常の Git push で公開する。
 
-すぐに更新する場合は AUR maintenance を `dry_run=false` で手動実行できます。`aur-production` 環境の `AUR_SSH_PRIVATE_KEY` が必要です。
+### 利用側の検証範囲
 
-## ローカル検証
+現在は mikumikudesu の実行ファイルとコア・CLI テスト、pmxer の CLI 構成、vmd-trace のモデル対応 CLI 構成を対象にしています。PMX / VMD、アニメーション、libmmd 単体の物理テストや動的リンクも確認します。
+
+ただし、GUI 描画、動画キャプチャ、MNN、MediaPipe の動作までは含めていません。**CLI がビルドできたからといって、すべての表示や推論が動くことまで保証するわけではありません。**
+
+vmd-trace は非公開リポジトリです。GitHub の `CONSUMERS_TOKEN` に読み取り専用トークンを設定すると、ランナーが取得したソースを読み取り専用でコンテナへ渡して検証できます。
+
+トークンやソースが取得できない場合は、その利用先のテストを警告付きでスキップする構成です。全3アプリの検証に成功した場合と、2アプリだけを確認できた場合は区別して扱ってください。
+
+すぐに確認したい場合は、Workflow を `dry_run=true` で手動実行できます。実際に公開する場合は `dry_run=false` と、`aur-production` の `AUR_SSH_PRIVATE_KEY` が必要です。
+
+## ローカルで検証する
+
+まずレシピの更新とビルドを試します。
 
 ```sh
 ./aurctl update libmmd
@@ -43,30 +58,41 @@ vmd-trace は非公開リポジトリです。リポジトリシークレット 
 ./aurctl publish libmmd --dry-run
 ```
 
-3アプリケーションを含む検証は、使い捨ての Arch Linux コンテナーで実行してください。ホストのパッケージを変更するスクリプトではありません。
+利用側アプリを含む検証は、ホスト環境を書き換えないよう使い捨ての Arch Linux コンテナで実行してください。
 
 ```sh
-docker run --rm -v "$PWD:/repo" archlinux:base-devel bash /repo/scripts/ci-validate.sh
+docker run --rm -v "$PWD:/repo" \
+  archlinux:base-devel bash /repo/scripts/ci-validate.sh
 ```
 
-非公開リポジトリも含めて検証する場合は、コンテナーの外で取得したソースを置くか、読み取り専用でマウントします。認証情報はコンテナーへ渡しません。
+非公開のソースまで検証する場合は、**コンテナの外で clone したものを読み取り専用で渡す**構成です。認証情報をコンテナの中へ渡さないようにします。
 
 ```sh
-git clone --depth 1 https://github.com/haturatu/vmd-trace.git .cache/consumers/vmd-trace
-docker run --rm -v "$PWD:/repo" archlinux:base-devel bash /repo/scripts/ci-validate.sh
+git clone --depth 1 https://github.com/haturatu/vmd-trace.git \
+  .cache/consumers/vmd-trace
+docker run --rm -v "$PWD:/repo" \
+  archlinux:base-devel bash /repo/scripts/ci-validate.sh
 ```
 
-初回移行では、削除済みの別プロジェクトの `libmmd` Git 履歴が AUR に残っていました。元のレシピを `aurctl add libmmd` で取り込んだ同期状態から、検証済みレシピを通常の fast-forward push で公開します。以後は通常の `publish` で更新します。
+上の clone はリポジトリを取得できる権限がある場合だけ成功します。また、この Docker コマンドだけで外部ソースが自動的に認識されるとは限りません。利用側のソースの配置先と `LIBMMD_CONSUMER_DIR` を検証スクリプトに合わせて確認してください。
 
-削除済みパッケージは push では復元できません。初回だけ次の手順が必要です。
+### 過去に AUR パッケージが削除されていた場合
+
+初回移行時は、削除済みの別プロジェクトによる `libmmd` の Git 履歴が AUR に残っていました。既存のレシピを `aurctl add libmmd` で取り込んだ後、検証したレシピを通常の fast-forward push で公開する形です。
+
+パッケージが削除済みの場合、**単純な push では復元できません**。必要な権限があれば AUR の SSH コマンドで復元・採用を申請します。
 
 ```sh
 ssh aur@aur.archlinux.org restore libmmd
 ssh aur@aur.archlinux.org adopt libmmd
 ```
 
-`restore` はパッケージを孤児として復元し、`adopt` は採用申請を行います。Package Maintainer が承認するまで push は拒否されます。その間の公開ジョブは失敗しますが、レシピと同期状態は変更されません。承認後は次回の定期実行または手動実行で公開されます。
+`restore` は孤児パッケージとして復元し、`adopt` は採用申請です。Package Maintainer の承認までは push が拒否されます。その間もレシピと同期状態を勝手に変更しないようにします。
 
-## ABI の変更
+これは初回移行時の記録であり、毎回のリリースに必要な手順ではありません。
 
-0.3 系の SONAME は `.so.0.3` です。互換性のあるパッチ更新では同じ SONAME を維持します。互換性を壊す変更ではマイナーバージョンと SONAME を更新し、3アプリケーションの CMake 要件・組み込み版も更新して再ビルドしてください。アプリケーションとの統合検証が失敗している間は、自動公開されません。
+## ABI が変わる場合
+
+`0.3` 系の SONAME は `.so.0.3` です。互換性のあるパッチ更新なら同じ SONAME を維持しますが、ABI を壊す場合はマイナーバージョンと SONAME の更新が必要です。
+
+その場合は3つのアプリの CMake 要件や組み込み版も更新して再ビルドします。利用側の必須検証が失敗している間は AUR に自動公開されません。
