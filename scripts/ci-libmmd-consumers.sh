@@ -11,7 +11,7 @@ pacman -S --noconfirm --needed cmake ninja bullet sdl3 vulkan-headers \
 work=$(mktemp -d /tmp/libmmd-consumers.XXXXXX)
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/recipe"
-cp packages/libmmd/PKGBUILD packages/libmmd/.SRCINFO "$work/recipe/"
+cp packages/libmmd-cpp/PKGBUILD packages/libmmd-cpp/.SRCINFO "$work/recipe/"
 chown -R builder:builder "$work"
 export LIBMMD_CONSUMER_REF=${LIBMMD_CONSUMER_REF:-main}
 # Sources prepared outside the container (with the caller's credentials) are

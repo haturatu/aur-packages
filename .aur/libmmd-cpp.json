@@ -1,0 +1,13 @@
+{
+  "commit": "0c93c738ea33601ef13682e5adbf938af8fe1b8f",
+  "files": {
+    ".SRCINFO": {
+      "executable": false,
+      "sha256": "d3d16c61b52fb17793132e19764c2947b8df9d08ee63638a63b07489e420ba7f"
+    },
+    "PKGBUILD": {
+      "executable": false,
+      "sha256": "8d59168a6c382d8bf88703422d6ccee7ae0f761ae61e7b55c5d78c0855f1f5a9"
+    }
+  }
+}
