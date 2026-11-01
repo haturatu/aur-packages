@@ -1,13 +1,13 @@
 # libmmd の配布と更新
 
-`libmmd` は GitHub Release のソースを使う通常の AUR パッケージです。`libmmd-git` ではなく `libmmd` という名前で配布しています。
+`libmmd` は GitHub Release のソースを使う通常の AUR パッケージです。`libmmd-git` ではなく、リリース版を追跡する `libmmd-cpp` という名前で配布しています。
 
 `-git` だと利用者がその時点の最新コミットを取得してビルドするため、再現性のあるライブラリの配布には少し向きません。なので、こちらは**リリース版を追跡して、利用側のアプリがビルドできることも確認してから公開する**構成にしました。
 
 ## インストールする
 
 ```sh
-yay -S libmmd
+yay -S libmmd-cpp
 ```
 
 ヘッダーと CMake パッケージを含めて `/usr` 以下へインストールします。物理機能とシステムの Bullet を有効にし、ビルド時のソース自動取得は無効化しています。
@@ -53,9 +53,9 @@ vmd-trace は非公開リポジトリです。GitHub の `CONSUMERS_TOKEN` に�
 まずレシピの更新とビルドを試します。
 
 ```sh
-./aurctl update libmmd
-./aurctl validate libmmd --build
-./aurctl publish libmmd --dry-run
+./aurctl update libmmd-cpp
+./aurctl validate libmmd-cpp --build
+./aurctl publish libmmd-cpp --dry-run
 ```
 
 利用側アプリを含む検証は、ホスト環境を書き換えないよう使い捨ての Arch Linux コンテナで実行してください。
@@ -76,20 +76,11 @@ docker run --rm -v "$PWD:/repo" \
 
 上の clone はリポジトリを取得できる権限がある場合だけ成功します。また、この Docker コマンドだけで外部ソースが自動的に認識されるとは限りません。利用側のソースの配置先と `LIBMMD_CONSUMER_DIR` を検証スクリプトに合わせて確認してください。
 
-### 過去に AUR パッケージが削除されていた場合
+### パッケージ名について
 
-初回移行時は、削除済みの別プロジェクトによる `libmmd` の Git 履歴が AUR に残っていました。既存のレシピを `aurctl add libmmd` で取り込んだ後、検証したレシピを通常の fast-forward push で公開する形です。
+AUR の `libmmd` は別プロジェクトが過去に使用して削除された名前で、採用には Package Maintainer の承認が必要でした。そのため、このライブラリは `libmmd-cpp` という名前で公開しています。
 
-パッケージが削除済みの場合、**単純な push では復元できません**。必要な権限があれば AUR の SSH コマンドで復元・採用を申請します。
-
-```sh
-ssh aur@aur.archlinux.org restore libmmd
-ssh aur@aur.archlinux.org adopt libmmd
-```
-
-`restore` は孤児パッケージとして復元し、`adopt` は採用申請です。Package Maintainer の承認までは push が拒否されます。その間もレシピと同期状態を勝手に変更しないようにします。
-
-これは初回移行時の記録であり、毎回のリリースに必要な手順ではありません。
+インストールされるファイル名、SONAME、CMake パッケージ名は upstream のまま `libmmd` です。利用側は `libmmd-cpp` をインストールし、`find_package(libmmd)` で検出します。
 
 ## ABI が変わる場合
 

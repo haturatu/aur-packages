@@ -13,11 +13,11 @@ AUR に公開しているパッケージの PKGBUILD と、更新・検証・公
 | `ahaha-git` | [ahaha](https://github.com/haturatu/ahaha) | 最新の Git ソースを検証 |
 | `ght-git` | [ght](https://github.com/haturatu/ght) | 最新の Git ソースを検証 |
 | `profile-sync-daemon-openrc-git` | [profile-sync-daemon-openrc](https://github.com/haturatu/profile-sync-daemon-openrc) | Git の最新版から OpenRC 用パッケージをビルド |
-| `libmmd` | [libmmd](https://github.com/haturatu/libmmd) | GitHub Release の安定版を追跡 |
+| `libmmd-cpp` | [libmmd](https://github.com/haturatu/libmmd) | GitHub Release の安定版を追跡 |
 
 `-git` の付いた VCS パッケージは、利用者が `makepkg` を実行するときに最新ソースを取得し、`pkgver()` でバージョンを決めます。上流のコミットが増えただけでは、AUR に `pkgver` の更新を push しません。
 
-依存関係やビルド方法を変えた場合は、必要に応じて `pkgrel` を増やします。一方、`libmmd` はリリース版なので、新しい GitHub Release に合わせて `pkgver`、チェックサム、`.SRCINFO` を更新します。
+依存関係やビルド方法を変えた場合は、必要に応じて `pkgrel` を増やします。一方、`libmmd-cpp` はリリース版なので、新しい GitHub Release に合わせて `pkgver`、チェックサム、`.SRCINFO` を更新します。
 
 ## なぜビルドと公開を分けているのか
 
@@ -102,7 +102,7 @@ git push origin master
 ./aurctl import --maintainer haturatu
 ```
 
-すでに登録済みのパッケージは変更しません。取り込み後は `configs/<pkgbase>.toml` を確認してください。`libmmd` のような安定版には `[nvchecker]` の設定が必要です。
+すでに登録済みのパッケージは変更しません。取り込み後は `configs/<pkgbase>.toml` を確認してください。`libmmd-cpp` のような安定版には `[nvchecker]` の設定が必要です。
 
 ### 新しいパッケージを作る場合
 
@@ -181,9 +181,9 @@ namcap は診断結果を出しますが、その警告だけで公開を止め�
 
 また、GitHub Actions の定期実行は遅延することがあります。公開リポジトリに60日間活動がない場合はスケジュールが無効化されるため、長期に更新がない場合は Actions の状態も確認してください。
 
-## libmmd の場合
+## libmmd-cpp の場合
 
-`libmmd` は `-git` ではない通常の AUR パッケージです。更新前に生成したパッケージをインストールし、mikumikudesu・pmxer・vmd-trace を `LIBMMD_PROVIDER=SYSTEM` でビルドする検証も行います。
+`libmmd-cpp` は `-git` ではない通常の AUR パッケージです。AUR の `libmmd` は別プロジェクトが使用していた名前のため、この名前で公開しています。更新前に生成したパッケージをインストールし、mikumikudesu・pmxer・vmd-trace を `LIBMMD_PROVIDER=SYSTEM` でビルドする検証も行います。
 
 ただし、検証に必要なリポジトリのソースが取得できない場合は、その利用先の確認をスキップする構成です。**すべての利用先で毎回検証できる保証ではありません。**
 
