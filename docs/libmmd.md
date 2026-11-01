@@ -58,6 +58,15 @@ docker run --rm -v "$PWD:/repo" archlinux:base-devel bash /repo/scripts/ci-valid
 
 初回移行では、削除済みの別プロジェクトの `libmmd` Git 履歴が AUR に残っていました。元のレシピを `aurctl add libmmd` で取り込んだ同期状態から、検証済みレシピを通常の fast-forward push で公開します。以後は通常の `publish` で更新します。
 
+削除済みパッケージは push では復元できません。初回だけ次の手順が必要です。
+
+```sh
+ssh aur@aur.archlinux.org restore libmmd
+ssh aur@aur.archlinux.org adopt libmmd
+```
+
+`restore` はパッケージを孤児として復元し、`adopt` は採用申請を行います。Package Maintainer が承認するまで push は拒否されます。その間の公開ジョブは失敗しますが、レシピと同期状態は変更されません。承認後は次回の定期実行または手動実行で公開されます。
+
 ## ABI の変更
 
 0.3 系の SONAME は `.so.0.3` です。互換性のあるパッチ更新では同じ SONAME を維持します。互換性を壊す変更ではマイナーバージョンと SONAME を更新し、3アプリケーションの CMake 要件・組み込み版も更新して再ビルドしてください。アプリケーションとの統合検証が失敗している間は、自動公開されません。
