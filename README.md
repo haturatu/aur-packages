@@ -154,3 +154,7 @@ shellcheck scripts/*.sh
 - [makepkg(8)](https://man.archlinux.org/man/makepkg.8.en)
 - [nvchecker の設定と JSON ログ](https://nvchecker.readthedocs.io/en/latest/usage.html)
 - [GitHub Actions の定期実行](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+
+## libmmd の配布
+
+`libmmd` は GitHub Release を追跡する通常パッケージです。公開前に、生成パッケージを使って mikumikudesu・pmxer・vmd-trace の互換性を検証します。インストール方法と更新手順は [libmmd の配布と更新](docs/libmmd.md)を参照してください。
