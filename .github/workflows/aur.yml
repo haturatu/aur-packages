@@ -35,13 +35,36 @@ jobs:
   validate:
     needs: test
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+      - name: Prepare consumer sources outside the container
+        env:
+          CONSUMERS_TOKEN: ${{ secrets.CONSUMERS_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/libmmd-consumers"
+          for app in mikumikudesu pmxer vmd-trace; do
+            if [ -n "$CONSUMERS_TOKEN" ]; then
+              url="https://x-access-token:${CONSUMERS_TOKEN}@github.com/haturatu/${app}.git"
+            else
+              url="https://github.com/haturatu/${app}.git"
+            fi
+            if git clone --quiet --depth 1 --branch main "$url" "$RUNNER_TEMP/libmmd-consumers/$app"; then
+              git -C "$RUNNER_TEMP/libmmd-consumers/$app" remote set-url origin "https://github.com/haturatu/${app}.git"
+            else
+              rm -rf "$RUNNER_TEMP/libmmd-consumers/$app"
+              echo "::warning::$app could not be cloned; its consumer build will be skipped"
+            fi
+          done
       - name: Update releases and build latest sources in Arch Linux
-        run: docker run --rm -v "$PWD:/repo" archlinux:base-devel bash /repo/scripts/ci-validate.sh
+        run: >-
+          docker run --rm
+          -v "$PWD:/repo"
+          -v "$RUNNER_TEMP/libmmd-consumers:/consumers:ro"
+          -e LIBMMD_CONSUMER_DIR=/consumers
+          archlinux:base-devel bash /repo/scripts/ci-validate.sh
       - name: Upload validated recipes and receipt
         run: tar -czf validated-recipes.tar.gz packages .cache/validated.json
       - name: Store validated archive

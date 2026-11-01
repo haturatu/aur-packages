@@ -15,3 +15,4 @@ fi
 useradd --create-home builder
 chown -R builder:builder /repo
 runuser -u builder -- bash -c 'cd /repo && python aurctl update --all && python aurctl validate --all --build'
+bash scripts/ci-libmmd-consumers.sh
