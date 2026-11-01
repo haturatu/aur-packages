@@ -1,0 +1,9 @@
+[package]
+kind = "release"
+publish = true
+
+[nvchecker]
+source = "github"
+github = "haturatu/libmmd"
+use_latest_release = true
+prefix = "v"
